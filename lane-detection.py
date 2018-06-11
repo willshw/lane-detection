@@ -124,7 +124,7 @@ def read_points(filename):
 
     return xyz_data
 
-def plot_points(points, skip=100):
+def plot_points(points, skip=100, point_size=1):
     points = points - np.min(points, axis=0)
     # plt.ion()
     norm = clr.Normalize(vmin=0,vmax=255)
@@ -147,7 +147,7 @@ def plot_points(points, skip=100):
     
     num = points.shape[0]
     sc = ax.scatter(points[0:num:skip,0], points[0:num:skip,1], \
-                    points[0:num:skip,2], c=points[0:num:skip,3], norm=norm, s=10)
+                    points[0:num:skip,2], c=points[0:num:skip,3], norm=norm, s=point_size)
 
     plt.colorbar(sc)
     plt.show()
@@ -155,7 +155,7 @@ def plot_points(points, skip=100):
 def thresholding(points, threshold=30):
     return points[np.logical_and(points[:,3]>threshold, points[:,3]<256)]
 
-def line_clustering(points):
+def line_clustering(points, orig_points):
     # 2d clustering based on line structure in x-y plane first
     fig2=plt.figure()
     ax2 = fig2.add_subplot(111)
@@ -219,7 +219,7 @@ def line_clustering(points):
         plt.plot(xy[:,0], m*xy[:,0] + c5, 'k')
 
     # 3d polyline fitting based on 2d clusters
-    xyz = line[:, 0:3]
+    xyz = copy.deepcopy(line[:, 0:3])
     xyz = xyz - np.min(xyz, axis=0)
 
     max_range = np.array([xyz[:,0].max()-xyz[:,0].min(), xyz[:,1].max()-xyz[:,1].min(), xyz[:,2].max()-xyz[:,2].min()]).max() / 2.0
@@ -237,20 +237,7 @@ def line_clustering(points):
 
     # polyline fitting
     from numpy.polynomial import polynomial as P
-    xs=np.arange(50)
-
-    # unparallel straight lines
-    fig3=plt.figure()
-    ax3 = Axes3D(fig3)
-    ax3.set_xlim(mid_x - max_range, mid_x + max_range)
-    ax3.set_ylim(mid_y - max_range, mid_y + max_range)
-    ax3.set_zlim(mid_z - max_range, mid_z + max_range)
-    ax3.scatter(xyz[:,0], xyz[:,1], xyz[:,2])
-    for i in range(len(K)):
-        X = K[i][:,0]
-        Y = K[i][:,1:3]
-        p1=P.polyfit(X,Y,1)
-        ax3.plot(xs, p1[0,0] + p1[1,0]*xs, p1[0,1] + p1[1,1]*xs, 'r')
+    xs=np.arange(100)
 
     # parallel straight lines
     fig4=plt.figure()
@@ -271,19 +258,18 @@ def line_clustering(points):
         p1=P.polyfit(X,Y,1)
         ax4.plot(xs, p1[0,0] + pave[1,0]*xs, p1[0,1] + pave[1,1]*xs, 'y')
 
-    # unparallel poly lines of degree 2
-    fig5=plt.figure()
-    ax5 = Axes3D(fig5)
-    ax5.set_xlim(mid_x - max_range, mid_x + max_range)
-    ax5.set_ylim(mid_y - max_range, mid_y + max_range)
-    ax5.set_zlim(mid_z - max_range, mid_z + max_range)
-    ax5.scatter(xyz[:,0], xyz[:,1], xyz[:,2])
+    # unparallel straight lines
+    fig3=plt.figure()
+    ax3 = Axes3D(fig3)
+    ax3.set_xlim(mid_x - max_range, mid_x + max_range)
+    ax3.set_ylim(mid_y - max_range, mid_y + max_range)
+    ax3.set_zlim(mid_z - max_range, mid_z + max_range)
+    ax3.scatter(xyz[:,0], xyz[:,1], xyz[:,2])
     for i in range(len(K)):
         X = K[i][:,0]
         Y = K[i][:,1:3]
-        p=P.polyfit(X,Y,2)
-        ax5.plot(xs, p[0,0] + p[1,0]*xs + p[2,0]*xs**2, \
-                p[0,1] + p[1,1]*xs + p[2,1]*xs**2)
+        p1=P.polyfit(X,Y,1)
+        ax3.plot(xs, p1[0,0] + p1[1,0]*xs, p1[0,1] + p1[1,1]*xs, 'r')
 
     # parallel poly lines of degree 2
     fig6=plt.figure()
@@ -305,6 +291,83 @@ def line_clustering(points):
         ax6.plot(xs, p[0,0] + pave[1,0]*xs + pave[2,0]*xs**2, \
                 p[0,1] + pave[1,1]*xs + pave[2,1]*xs**2)
 
+    # unparallel poly lines of degree 2
+    fig5=plt.figure()
+    ax5 = Axes3D(fig5)
+    ax5.set_xlim(mid_x - max_range, mid_x + max_range)
+    ax5.set_ylim(mid_y - max_range, mid_y + max_range)
+    ax5.set_zlim(mid_z - max_range, mid_z + max_range)
+    ax5.scatter(xyz[:,0], xyz[:,1], xyz[:,2])
+    print ''
+    print ''
+    print ''
+    print 'Best fit: polylines of degree 2:\n'
+
+    for i in range(len(K)):
+        X = K[i][:,0]
+        Y = K[i][:,1:3]
+        p=P.polyfit(X,Y,2)
+        ax5.plot(xs, p[0,0] + p[1,0]*xs + p[2,0]*xs**2, \
+                p[0,1] + p[1,1]*xs + p[2,1]*xs**2)
+
+        print 'Y = ' + str(p[2,0]) + ' * X^2 + ' + str(p[1,0]) + ' * X + ' + str(p[0,0])
+        print 'Z = ' + str(p[2,1]) + ' * X^2 + ' + str(p[1,1]) + ' * X + ' + str(p[1,0])
+        print 'Y + Z = ' + str(p[2,0] + p[2,1]) + ' * X^2 + ' + str(p[1,0] + p[1,1]) + ' * X + ' + str(p[0,0] + p[1,0])
+        print ''
+
+
+    ### plot final result
+
+    intensity = copy.deepcopy(orig_points[:, 3])
+    orig_points[intensity > 30, 3] = 255
+    points = copy.deepcopy(orig_points)
+
+    skip = 10
+    points = points - np.min(orig_points, axis=0)
+    line_xyz = line - np.min(orig_points, axis=0)
+    min_line_xyz = np.min(line_xyz, axis=0)
+    
+    # plt.ion()
+
+    # print "Min X:{:15.2f}, Max X:{:15.2f}".format(np.min(points[:,0]), np.max(points[:,0]))
+    # print "Min Y:{:15.2f}, Max Y:{:15.2f}".format(np.min(points[:,1]), np.max(points[:,1]))
+    # print "Min Z:{:15.2f}, Max Z:{:15.2f}".format(np.min(points[:,2]), np.max(points[:,2]))
+
+    # print "Min X:{:15.2f}, Max X:{:15.2f}".format(np.min(line_xyz[:,0]), np.max(line_xyz[:,0]))
+    # print "Min Y:{:15.2f}, Max Y:{:15.2f}".format(np.min(line_xyz[:,1]), np.max(line_xyz[:,1]))
+    # print "Min Z:{:15.2f}, Max Z:{:15.2f}".format(np.min(line_xyz[:,2]), np.max(line_xyz[:,2]))
+
+    norm = clr.Normalize(vmin=0,vmax=255)
+
+    fig = plt.figure()
+    ax_f = Axes3D(fig)
+
+    max_range = np.array([points[:,0].max()-points[:,0].min(), points[:,1].max()-points[:,1].min(), points[:,2].max()-points[:,2].min()]).max() / 2.0
+    mid_x = (points[:,0].max() + points[:,0].min()) * 0.5
+    mid_y = (points[:,1].max() + points[:,1].min()) * 0.5
+    mid_z = (points[:,2].max() + points[:,2].min()) * 0.5
+
+    ax_f.set_xlim(mid_x - max_range, mid_x + max_range)
+    ax_f.set_ylim(mid_y - max_range, mid_y + max_range)
+    ax_f.set_zlim(mid_z - max_range, mid_z + max_range)
+
+    ax_f.set_xlabel('X')
+    ax_f.set_ylabel('Y')
+    ax_f.set_zlabel('Z')
+    
+    num = points.shape[0]
+    sc = ax_f.scatter(points[0:num:skip,0], points[0:num:skip,1], \
+                    points[0:num:skip,2], c=points[0:num:skip,3], norm=norm, s=4)
+
+    for i in range(len(K)):
+        X = K[i][:,0]
+        Y = K[i][:,1:3]
+        p=P.polyfit(X,Y,2)
+
+        ax_f.plot(xs + min_line_xyz[0], p[0,0] + p[1,0]*(xs) + p[2,0]*(xs)**2 + min_line_xyz[1], \
+                p[0,1] + p[1,1]*xs + p[2,1]*xs**2 + min_line_xyz[2])
+
+    plt.colorbar(sc)
     plt.show()
 
 if __name__ == '__main__':
@@ -316,6 +379,11 @@ if __name__ == '__main__':
     road_xyz.from_array(xyz_data.astype('float32'))
     pcl.save(road_xyz, 'road_xyz.pcd')
     print "Road plane segment point cloud file road_xyz.pcd saved."
+
+    print "Min X:{:15.2f}, Max X:{:15.2f}".format(np.min(xyz_data[:,0]), np.max(xyz_data[:,0]))
+    print "Min Y:{:15.2f}, Max Y:{:15.2f}".format(np.min(xyz_data[:,1]), np.max(xyz_data[:,1]))
+    print "Min Z:{:15.2f}, Max Z:{:15.2f}".format(np.min(xyz_data[:,2]), np.max(xyz_data[:,2]))
+    print "Min I:{:15.2f}, Max I:{:15.2f}".format(np.min(xyz_data[:,3]), np.max(xyz_data[:,3]))
 
     # find road plane using pcl call
     road_plane, road_plane_idx = find_road_plane(xyz_data)
@@ -346,7 +414,11 @@ if __name__ == '__main__':
     # plot_points(road_plane_seg, skip=100)
 
     line = thresholding(road_plane_seg)
-
     # plot_points(line, skip=1)
 
-    line_clustering(line)
+    line_clustering(line, xyz_data)
+
+    # intensity = copy.deepcopy(xyz_data[:, 3])
+    # xyz_data[intensity > 30, 3] = 255
+    # points = copy.deepcopy(xyz_data)
+    # plot_points(points, skip=10, point_size=4)
