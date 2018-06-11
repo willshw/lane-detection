@@ -56,7 +56,7 @@ plt.plot(xy[:,0], m*xy[:,0] + c4, 'y')
 plt.plot(xy[:,0], m*xy[:,0] + c5, 'k')
 
 
-for i in range(100):
+for i in range(10):
     # classify
     y1 = np.absolute(A.dot([[m],[c1]]) - xy[:,[1]])
     y2 = np.absolute(A.dot([[m],[c2]]) - xy[:,[1]])
@@ -113,7 +113,6 @@ from numpy.polynomial import polynomial as P
 xs=np.arange(50)
 
 # unparallel straight lines
-ax3.clear()
 for i in range(len(K)):
     X = K[i][:,0]
     Y = K[i][:,1:3]
@@ -121,8 +120,10 @@ for i in range(len(K)):
     ax3.plot(xs, p1[0,0] + p1[1,0]*xs, p1[0,1] + p1[1,1]*xs, 'r')
 
 # parallel straight lines
+fig4=plt.figure()
+ax4 = Axes3D(fig4)
+ax4.scatter(xyz[:,0], xyz[:,1], xyz[:,2])
 pave = np.zeros((2,2))
-ax3.clear()
 for i in range(len(K)):
     X = K[i][:,0]
     Y = K[i][:,1:3]
@@ -132,28 +133,32 @@ for i in range(len(K)):
     X = K[i][:,0]
     Y = K[i][:,1:3]
     p1=P.polyfit(X,Y,1)
-    ax3.plot(xs, p1[0,0] + pave[1,0]*xs, p1[0,1] + pave[1,1]*xs, 'r')
+    ax4.plot(xs, p1[0,0] + pave[1,0]*xs, p1[0,1] + pave[1,1]*xs, 'y')
 
 # unparallel poly lines of degree 2
-ax3.clear()
+fig5=plt.figure()
+ax5 = Axes3D(fig5)
+ax5.scatter(xyz[:,0], xyz[:,1], xyz[:,2])
 for i in range(len(K)):
     X = K[i][:,0]
     Y = K[i][:,1:3]
     p=P.polyfit(X,Y,2)
-    ax3.plot(xs, p[0,0] + p[1,0]*xs + p[2,0]*xs**2, \
+    ax5.plot(xs, p[0,0] + p[1,0]*xs + p[2,0]*xs**2, \
              p[0,1] + p[1,1]*xs + p[2,1]*xs**2)
 
 # parallel poly lines of degree 2
+fig6=plt.figure()
+ax6 = Axes3D(fig6)
+ax6.scatter(xyz[:,0], xyz[:,1], xyz[:,2])
 pave = np.zeros((3,2))
-ax3.clear()
 for i in range(len(K)):
     X = K[i][:,0]
     Y = K[i][:,1:3]
-    pave= pave + P.polyfit(X,Y,1)
+    pave= pave + P.polyfit(X,Y,2)
 pave = pave / len(K)
 for i in range(len(K)):
     X = K[i][:,0]
     Y = K[i][:,1:3]
     p=P.polyfit(X,Y,2)
-    ax3.plot(xs, p[0,0] + pave[1,0]*xs + pave[2,0]*xs**2, \
+    ax6.plot(xs, p[0,0] + pave[1,0]*xs + pave[2,0]*xs**2, \
              p[0,1] + pave[1,1]*xs + pave[2,1]*xs**2)
